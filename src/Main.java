@@ -54,7 +54,7 @@ public class Main {
                 roleStmt.setInt(2, clubId);
                 ResultSet roleRs = roleStmt.executeQuery();
 
-                if (roleRs.next() && roleRs.getString("role").equals("동아리 회장")) {
+                if (roleRs.next() && roleRs.getString("role").equals("동아리장")) {
                     // 회장일 경우 동아리 정보 수정
                     System.out.print("새로운 동아리 정보를 입력하세요: ");
                     String newInfo = scanner.nextLine();
@@ -84,23 +84,76 @@ public class Main {
     // 3. 동아리 실적 내역 확인
     private static void viewClubPerformance(Scanner scanner) {
         try {
-            System.out.print("동아리 ID를 입력하세요: ");
-            int clubId = scanner.nextInt();
-            String sql = "SELECT * FROM Activity WHERE club_id = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setInt(1, clubId);
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        System.out.println("실적 ID: " + rs.getInt("activity_id"));
-                        System.out.println("실적 정보: " + rs.getString("description"));
-                        System.out.println("-----------");
+            System.out.print("동아리 이름을 입력하세요: ");
+            String clubName = scanner.nextLine();
+
+            // 동아리 이름으로 club_id 찾기
+            String clubQuery = "SELECT club_id FROM Club WHERE name = ?";
+            try (PreparedStatement clubStmt = conn.prepareStatement(clubQuery)) {
+                clubStmt.setString(1, clubName);
+                ResultSet clubRs = clubStmt.executeQuery();
+
+                if (clubRs.next()) {
+                    int clubId = clubRs.getInt("club_id");
+
+                    // club_id로 Activity 테이블에서 실적 조회
+                    String activityQuery = "SELECT * FROM Activity WHERE club_id = ?";
+                    try (PreparedStatement activityStmt = conn.prepareStatement(activityQuery)) {
+                        activityStmt.setInt(1, clubId);
+                        ResultSet activityRs = activityStmt.executeQuery();
+
+                        System.out.println("[" + clubName + "] 실적 내역");
+                        while (activityRs.next()) {
+                            System.out.println("실적 ID: " + activityRs.getInt("activity_id")+" 실적 정보: " + activityRs.getString("description"));
+                            System.out.println("-----------");
+                        }
                     }
+                } else {
+                    System.out.println("입력한 동아리를 찾을 수 없습니다.");
                 }
             }
         } catch (SQLException e) {
             System.out.println("동아리 실적 내역 조회 중 오류 발생: " + e.getMessage());
         }
     }
+    // 4. 실적 내용 등록
+    private static void registerClubPerformance(Scanner scanner) {
+        System.out.print("동아리 이름을 입력하세요: ");
+        String clubName = scanner.nextLine();
+
+        String clubIdQuery = "SELECT club_id FROM Club WHERE name = ?";
+        try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
+            clubStmt.setString(1, clubName);
+
+            try (ResultSet clubRs = clubStmt.executeQuery()) {
+                if (!clubRs.next()) {
+                    System.out.println("입력한 동아리가 존재하지 않습니다.");
+                    return;
+                }
+
+                int clubId = clubRs.getInt("club_id");
+
+                System.out.print("실적 내용을 입력하세요: ");
+                String description = scanner.nextLine();
+
+                String insertQuery = "INSERT INTO Activity (club_id, description) VALUES (?, ?)";
+                try (PreparedStatement stmt = conn.prepareStatement(insertQuery)) {
+                    stmt.setInt(1, clubId);
+                    stmt.setString(2, description);
+
+                    int rowsAffected = stmt.executeUpdate();
+                    if (rowsAffected > 0) {
+                        System.out.println("실적 내용이 성공적으로 등록되었습니다.");
+                    } else {
+                        System.out.println("실적 내용 등록에 실패했습니다.");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("실적 내용 등록 중 오류 발생: " + e.getMessage());
+        }
+    }
+
     // 4. 동아리 실적 내역 수정
     private static void updatePerformance(Scanner scanner) {
         try {
@@ -140,17 +193,63 @@ public class Main {
 
     // 6. 부원 신청
     private static void applyForMembership(Scanner scanner) {
-        System.out.print("동아리 ID를 입력하세요: ");
-        int clubId = scanner.nextInt();
-        System.out.print("부원 이름을 입력하세요: ");
-        scanner.nextLine();  // 버퍼 비우기
-        String memberName = scanner.nextLine();
+        System.out.print("동아리 이름을 입력하세요: ");
+        String clubName = scanner.nextLine();
 
-        try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO Member (club_id, name) VALUES (?, ?)")) {
-            stmt.setInt(1, clubId);
-            stmt.setString(2, memberName);
-            stmt.executeUpdate();
-            System.out.println("부원이 신청되었습니다.");
+        // 동아리 이름으로 club_id 찾기
+        String clubQuery = "SELECT club_id FROM Club WHERE name = ?";
+        try (PreparedStatement clubStmt = conn.prepareStatement(clubQuery)) {
+            clubStmt.setString(1, clubName);
+            ResultSet clubRs = clubStmt.executeQuery();
+
+            if (clubRs.next()) {
+                int clubId = clubRs.getInt("club_id");
+
+                // 부원 정보 입력
+                System.out.print("학번을 입력하세요: ");
+                int studentId = scanner.nextInt();
+                scanner.nextLine(); // 버퍼 비우기
+                System.out.print("부원의 이름을 입력하세요: ");
+                String name = scanner.nextLine();
+                System.out.print("부원의 학년을 입력하세요 (숫자): ");
+                int grade = scanner.nextInt();
+                scanner.nextLine(); // 버퍼 비우기
+                System.out.print("부원의 성별을 입력하세요 (M/F): ");
+                char gender = scanner.nextLine().charAt(0);
+                System.out.print("부원의 상태를 입력하세요 (예: 활동 중, 휴학 중): ");
+                String status = scanner.nextLine();
+                System.out.print("부원의 역할을 선택하세요 (동아리장/부회장/일반부원): ");
+                String role = scanner.nextLine();
+
+                // 유효성 검사: 역할
+                if (!role.equals("동아리장") && !role.equals("부회장") && !role.equals("일반부원")) {
+                    System.out.println("잘못된 역할 입력입니다. 신청을 종료합니다.");
+                    return;
+                }
+
+                // 데이터 삽입
+                String insertQuery = "INSERT INTO Member (student_id,name, grade, gender, status, club_id, role) " +
+                        "VALUES (?, ?, ?, ?, ?, ?,?)";
+                try (PreparedStatement insertStmt = conn.prepareStatement(insertQuery)) {
+                    insertStmt.setInt(1, studentId);
+                    insertStmt.setString(2, name);
+                    insertStmt.setInt(3, grade);
+                    insertStmt.setString(4, String.valueOf(gender));
+                    insertStmt.setString(5, status);
+                    insertStmt.setInt(6, clubId);
+                    insertStmt.setString(7, role);
+
+                    int rowsAffected = insertStmt.executeUpdate();
+                    if (rowsAffected > 0) {
+                        System.out.println("부원 신청이 완료되었습니다.");
+                    } else {
+                        System.out.println("부원 신청에 실패했습니다.");
+                    }
+                }
+            } else {
+                System.out.println("입력하신 동아리를 찾을 수 없습니다.");
+            }
+
         } catch (SQLException e) {
             System.out.println("부원 신청 중 오류 발생: " + e.getMessage());
         }
@@ -158,14 +257,33 @@ public class Main {
 
     // 7. 부원 목록 조회
     private static void listMembers(Scanner scanner) {
-        System.out.print("동아리 ID를 입력하세요: ");
-        int clubId = scanner.nextInt();
+        System.out.print("동아리 이름을 입력하세요: ");
+        String clubName = scanner.nextLine();
 
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM Member WHERE club_id = ?")) {
-            stmt.setInt(1, clubId);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                System.out.println("부원 ID: " + rs.getInt("member_id") + ", 이름: " + rs.getString("name"));
+        try {
+            // 동아리 이름으로 club_id 조회
+            String clubQuery = "SELECT club_id FROM Club WHERE name = ?";
+            try (PreparedStatement clubStmt = conn.prepareStatement(clubQuery)) {
+                clubStmt.setString(1, clubName);
+                ResultSet clubRs = clubStmt.executeQuery();
+
+                if (clubRs.next()) {
+                    int clubId = clubRs.getInt("club_id");
+
+                    // club_id를 기준으로 부원 목록 조회
+                    String memberQuery = "SELECT * FROM Member WHERE club_id = ?";
+                    try (PreparedStatement memberStmt = conn.prepareStatement(memberQuery)) {
+                        memberStmt.setInt(1, clubId);
+                        ResultSet memberRs = memberStmt.executeQuery();
+
+                        System.out.println("[" + clubName + "] 부원 목록");
+                        while (memberRs.next()) {
+                            System.out.println("학번: " + memberRs.getInt("student_id") + ", 이름: " + memberRs.getString("name"));
+                        }
+                    }
+                } else {
+                    System.out.println("입력한 동아리를 찾을 수 없습니다.");
+                }
             }
         } catch (SQLException e) {
             System.out.println("부원 목록 조회 중 오류 발생: " + e.getMessage());
@@ -175,17 +293,85 @@ public class Main {
     // 8. 부원 정보 수정
     // 부원 정보 수정
     private static void updateMemberInfo(Scanner scanner) {
-        System.out.print("부원 ID를 입력하세요: ");
-        int memberId = scanner.nextInt();
-        System.out.print("새로운 부원 이름을 입력하세요: ");
-        scanner.nextLine();  // 버퍼 비우기
-        String newMemberInfo = scanner.nextLine();
+        System.out.print("학번를 입력하세요: ");
+        int studentId = scanner.nextInt();
+        scanner.nextLine(); // 버퍼 비우기
 
-        try (PreparedStatement stmt = conn.prepareStatement("UPDATE Member SET name = ? WHERE member_id = ?")) {
-            stmt.setString(1, newMemberInfo);
-            stmt.setInt(2, memberId);
-            stmt.executeUpdate();
-            System.out.println("부원 정보가 수정되었습니다.");
+        // 현재 부원 정보 조회
+        String query = "SELECT * FROM Member WHERE student_id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, studentId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                System.out.println("현재 부원 정보:");
+                System.out.println("이름: " + rs.getString("name"));
+                System.out.println("학년: " + rs.getInt("grade"));
+                System.out.println("성별: " + rs.getString("gender"));
+                System.out.println("상태: " + rs.getString("status"));
+                System.out.println("역할: " + rs.getString("role"));
+                System.out.println();
+
+                // 수정할 정보 선택
+                System.out.println("수정할 항목을 선택하세요:");
+                System.out.println("1. 이름");
+                System.out.println("2. 학년");
+                System.out.println("3. 성별");
+                System.out.println("4. 상태");
+                System.out.println("5. 역할");
+                int choice = scanner.nextInt();
+                scanner.nextLine(); // 버퍼 비우기
+
+                String updateQuery = null;
+                String newValue = null;
+
+                switch (choice) {
+                    case 1: // 이름 수정
+                        System.out.print("새로운 이름을 입력하세요: ");
+                        newValue = scanner.nextLine();
+                        updateQuery = "UPDATE Member SET name = ? WHERE student_id = ?";
+                        break;
+                    case 2: // 학년 수정
+                        System.out.print("새로운 학년을 입력하세요: ");
+                        newValue = String.valueOf(scanner.nextInt());
+                        updateQuery = "UPDATE Member SET grade = ? WHERE student_id = ?";
+                        break;
+                    case 3: // 성별 수정
+                        System.out.print("새로운 성별 (M/F)을 입력하세요: ");
+                        newValue = scanner.nextLine();
+                        updateQuery = "UPDATE Member SET gender = ? WHERE student_id = ?";
+                        break;
+                    case 4: // 상태 수정
+                        System.out.print("새로운 상태를 입력하세요: ");
+                        newValue = scanner.nextLine();
+                        updateQuery = "UPDATE Member SET status = ? WHERE student_id = ?";
+                        break;
+                    case 5: // 역할 수정
+                        System.out.print("새로운 역할을 입력하세요 (동아리장/부회장/일반부원): ");
+                        newValue = scanner.nextLine();
+                        updateQuery = "UPDATE Member SET role = ? WHERE student_id = ?";
+                        break;
+                    default:
+                        System.out.println("잘못된 선택입니다.");
+                        return;
+                }
+
+                // 업데이트 실행
+                try (PreparedStatement updateStmt = conn.prepareStatement(updateQuery)) {
+                    updateStmt.setString(1, newValue);
+                    updateStmt.setInt(2, studentId);
+                    int rowsAffected = updateStmt.executeUpdate();
+                    if (rowsAffected > 0) {
+                        System.out.println("부원 정보가 성공적으로 수정되었습니다.");
+                    } else {
+                        System.out.println("부원 정보 수정에 실패했습니다.");
+                    }
+                }
+
+            } else {
+                System.out.println("해당 ID를 가진 부원을 찾을 수 없습니다.");
+            }
+
         } catch (SQLException e) {
             System.out.println("부원 정보 수정 중 오류 발생: " + e.getMessage());
         }
@@ -194,14 +380,18 @@ public class Main {
 
     // 9. 회비 납부
     private static void makePayment(Scanner scanner) {
-        System.out.print("부원 ID를 입력하세요: ");
+        System.out.print("학번를 입력하세요: ");
         int memberId = scanner.nextInt();
         System.out.print("회비 금액을 입력하세요: ");
         double amount = scanner.nextDouble();
+        // 현재 날짜를 가져오기 (yyyy-MM-dd 형식)
+        java.sql.Date currentDate = new java.sql.Date(System.currentTimeMillis());
 
-        try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO Payment (member_id, amount) VALUES (?, ?)")) {
+
+        try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO Payment (member_id, amount, payment_date) VALUES (?, ?, ?)")) {
             stmt.setInt(1, memberId);
             stmt.setDouble(2, amount);
+            stmt.setDate(3, currentDate);  // 현재 날짜를 payment_date로 설정
             stmt.executeUpdate();
             System.out.println("회비가 납부되었습니다.");
         } catch (SQLException e) {
@@ -212,19 +402,108 @@ public class Main {
 
     // 10. 회비 납부 내역
     private static void viewPaymentHistory(Scanner scanner) {
-        System.out.print("동아리 ID를 입력하세요: ");
-        int clubId = scanner.nextInt();
+        System.out.print("동아리 이름을 입력하세요: ");
+        String clubName = scanner.nextLine();
 
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM Payment WHERE member_id IN (SELECT member_id FROM Member WHERE club_id = ?)")) {
-            stmt.setInt(1, clubId);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                System.out.println("부원 ID: " + rs.getInt("member_id") + ", 금액: " + rs.getDouble("amount"));
+        String clubIdQuery = "SELECT club_id FROM Club WHERE club_name = ?";
+        try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
+            clubStmt.setString(1, clubName);
+
+            try (ResultSet clubRs = clubStmt.executeQuery()) {
+                if (!clubRs.next()) {
+                    System.out.println("입력한 동아리가 존재하지 않습니다.");
+                    return;
+                }
+
+                int clubId = clubRs.getInt("club_id");
+
+
+
+                try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM Payment WHERE student_id IN (SELECT student_id FROM Member WHERE club_id = ?)")) {
+                    stmt.setInt(1, clubId);
+                    ResultSet rs = stmt.executeQuery();
+                    while (rs.next()) {
+                        System.out.println("부원 ID: " + rs.getInt("student_id") + ", 금액: " + rs.getDouble("amount") + "납부 날짜" + rs.getDate("payment_date"));
+                    }
+                }
             }
-        } catch (SQLException e) {
+
+        }
+        catch (SQLException e) {
             System.out.println("회비 납부 내역 조회 중 오류 발생: " + e.getMessage());
         }
+
     }
+    private static void listNotices(Scanner scanner) {
+        System.out.print("동아리 이름을 입력하세요: ");
+        String clubName = scanner.nextLine();
+
+        String clubIdQuery = "SELECT club_id FROM Club WHERE name = ?";
+        try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
+            clubStmt.setString(1, clubName);
+
+            try (ResultSet clubRs = clubStmt.executeQuery()) {
+                if (!clubRs.next()) {
+                    System.out.println("입력한 동아리가 존재하지 않습니다.");
+                    return;
+                }
+
+                int clubId = clubRs.getInt("club_id");
+
+                String noticeQuery = "SELECT * FROM Board WHERE club_id = ?";
+                try (PreparedStatement stmt = conn.prepareStatement(noticeQuery)) {
+                    stmt.setInt(1, clubId);
+
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        System.out.println("공지사항 목록:");
+                        while (rs.next()) {
+                            System.out.println("공지사항 ID: " + rs.getInt("board_id"));
+                            System.out.println("내용: " + rs.getString("content"));
+                            System.out.println("---------------");
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("공지사항 조회 중 오류 발생: " + e.getMessage());
+        }
+    }
+    private static void postNotice(Scanner scanner) {
+        System.out.print("동아리 이름을 입력하세요: ");
+        String clubName = scanner.nextLine();
+
+        String clubIdQuery = "SELECT club_id FROM Club WHERE name = ?";
+        try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
+            clubStmt.setString(1, clubName);
+
+            try (ResultSet clubRs = clubStmt.executeQuery()) {
+                if (!clubRs.next()) {
+                    System.out.println("입력한 동아리가 존재하지 않습니다.");
+                    return;
+                }
+
+                int clubId = clubRs.getInt("club_id");
+
+
+
+                System.out.print("공지 내용을 입력하세요: ");
+                String content = scanner.nextLine();
+
+                String insertNoticeQuery = "INSERT INTO Board (club_id, content) VALUES (?, ?)";
+                try (PreparedStatement stmt = conn.prepareStatement(insertNoticeQuery)) {
+                    stmt.setInt(1, clubId);
+                    stmt.setString(2, content);
+                    stmt.executeUpdate();
+
+                    System.out.println("공지사항이 게시되었습니다.");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("공지사항 게시 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+
 
     // 메뉴 출력 함수
     public static void displayMenu() {
@@ -232,13 +511,18 @@ public class Main {
         System.out.println("1. 동아리 개설");
         System.out.println("2. 동아리 정보 수정");
         System.out.println("3. 동아리 실적 내역 확인");
-        System.out.println("4. 동아리 실적 내역 수정");
-        System.out.println("5. 동아리 목록 조회");
-        System.out.println("6. 부원 신청");
-        System.out.println("7. 부원 목록 조회");
-        System.out.println("8. 부원 정보 수정");
-        System.out.println("9. 회비 납부");
-        System.out.println("10. 회비 납부 내역 조회");
+        System.out.println("4. 동아리 실적 내역 등록");
+        System.out.println("5. 동아리 실적 내역 수정");
+        System.out.println("6. 동아리 목록 조회");
+        System.out.println("7. 부원 신청");
+        System.out.println("8. 부원 목록 조회");
+        System.out.println("9. 부원 정보 수정");
+        System.out.println("10. 회비 납부");
+        System.out.println("11. 회비 납부 내역 조회");
+        System.out.println("12. 공지사항 목록");
+        System.out.println("13. 공지사항 등록");
+
+
         System.out.println("0. 종료");
     }
 
@@ -266,26 +550,35 @@ public class Main {
                     case 3:
                         viewClubPerformance(scanner);
                         break;
-                    case 4:
-                        updatePerformance(scanner);
+                    case 4: // 실적 내용 등록
+                        registerClubPerformance(scanner);
                         break;
                     case 5:
-                        listClubs();
+                        updatePerformance(scanner);
                         break;
                     case 6:
-                        applyForMembership(scanner);
+                        listClubs();
                         break;
                     case 7:
-                        listMembers(scanner);
+                        applyForMembership(scanner);
                         break;
                     case 8:
-                        updateMemberInfo(scanner);
+                        listMembers(scanner);
                         break;
                     case 9:
-                        makePayment(scanner);
+                        updateMemberInfo(scanner);
                         break;
                     case 10:
+                        makePayment(scanner);
+                        break;
+                    case 11:
                         viewPaymentHistory(scanner);
+                        break;
+                    case 12:
+                        listNotices(scanner);
+                        break;
+                    case 13:
+                        postNotice(scanner);
                         break;
                     case 0:
                         System.out.println("프로그램을 종료합니다.");
