@@ -7,14 +7,14 @@ public class Main {
     private static void createClub(Scanner scanner) {
         try {
             System.out.print("동아리 이름을 입력하세요: ");
-            String name = scanner.nextLine();
+            String Cname = scanner.nextLine();
             System.out.print("동아리 정보를 입력하세요: ");
-            String description = scanner.nextLine();
+            String club_info = scanner.nextLine();
 
-            String sql = "INSERT INTO Club (name, description) VALUES (?, ?)";
+            String sql = "INSERT INTO Club (Cname, club_info) VALUES (?, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setString(1, name);
-                stmt.setString(2, description);
+                stmt.setString(1, Cname);
+                stmt.setString(2, club_info);
                 int rowsAffected = stmt.executeUpdate();
                 if (rowsAffected > 0) {
                     System.out.println("동아리가 개설되었습니다.");
@@ -35,7 +35,7 @@ public class Main {
             String clubName = scanner.nextLine();
 
             // 동아리 이름에 해당하는 club_id 찾기
-            String clubQuery = "SELECT club_id FROM Club WHERE name = ?";
+            String clubQuery = "SELECT club_id FROM Club WHERE Cname = ?";
             PreparedStatement clubStmt = conn.prepareStatement(clubQuery);
             clubStmt.setString(1, clubName);
             ResultSet clubRs = clubStmt.executeQuery();
@@ -59,7 +59,7 @@ public class Main {
                     System.out.print("새로운 동아리 정보를 입력하세요: ");
                     String newInfo = scanner.nextLine();
 
-                    String updateQuery = "UPDATE Club SET description = ? WHERE club_id = ?";
+                    String updateQuery = "UPDATE Club SET club_info = ? WHERE club_id = ?";
                     PreparedStatement updateStmt = conn.prepareStatement(updateQuery);
                     updateStmt.setString(1, newInfo);
                     updateStmt.setInt(2, clubId);
@@ -88,7 +88,7 @@ public class Main {
             String clubName = scanner.nextLine();
 
             // 동아리 이름으로 club_id 찾기
-            String clubQuery = "SELECT club_id FROM Club WHERE name = ?";
+            String clubQuery = "SELECT club_id FROM Club WHERE Cname = ?";
             try (PreparedStatement clubStmt = conn.prepareStatement(clubQuery)) {
                 clubStmt.setString(1, clubName);
                 ResultSet clubRs = clubStmt.executeQuery();
@@ -96,15 +96,15 @@ public class Main {
                 if (clubRs.next()) {
                     int clubId = clubRs.getInt("club_id");
 
-                    // club_id로 Activity 테이블에서 실적 조회
-                    String activityQuery = "SELECT * FROM Activity WHERE club_id = ?";
-                    try (PreparedStatement activityStmt = conn.prepareStatement(activityQuery)) {
-                        activityStmt.setInt(1, clubId);
-                        ResultSet activityRs = activityStmt.executeQuery();
+                    // club_id로 Performance 테이블에서 실적 조회
+                    String performanceQuery = "SELECT * FROM Performance WHERE club_id = ?";
+                    try (PreparedStatement performanceStmt = conn.prepareStatement(performanceQuery)) {
+                        performanceStmt.setInt(1, clubId);
+                        ResultSet performanceRs = performanceStmt.executeQuery();
 
                         System.out.println("[" + clubName + "] 실적 내역");
-                        while (activityRs.next()) {
-                            System.out.println("실적 ID: " + activityRs.getInt("activity_id")+" 실적 정보: " + activityRs.getString("description"));
+                        while (performanceRs.next()) {
+                            System.out.println("실적 ID: " + performanceRs.getInt("performance_id")+" 실적 정보: " + performanceRs.getString("performance_info")+"("+performanceRs.getString("performance_date")+")");
                             System.out.println("-----------");
                         }
                     }
@@ -121,7 +121,7 @@ public class Main {
         System.out.print("동아리 이름을 입력하세요: ");
         String clubName = scanner.nextLine();
 
-        String clubIdQuery = "SELECT club_id FROM Club WHERE name = ?";
+        String clubIdQuery = "SELECT club_id FROM Club WHERE Cname = ?";
         try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
             clubStmt.setString(1, clubName);
 
@@ -134,12 +134,15 @@ public class Main {
                 int clubId = clubRs.getInt("club_id");
 
                 System.out.print("실적 내용을 입력하세요: ");
-                String description = scanner.nextLine();
+                String performance_info = scanner.nextLine();
+                System.out.print("실적 날짜를 입력하세요: ");
+                String performance_date = scanner.nextLine();
 
-                String insertQuery = "INSERT INTO Activity (club_id, description) VALUES (?, ?)";
+                String insertQuery = "INSERT INTO Performance (club_id, performance_info,performance_date) VALUES (?, ?,?)";
                 try (PreparedStatement stmt = conn.prepareStatement(insertQuery)) {
                     stmt.setInt(1, clubId);
-                    stmt.setString(2, description);
+                    stmt.setString(2, performance_info);
+                    stmt.setString(3, performance_date);
 
                     int rowsAffected = stmt.executeUpdate();
                     if (rowsAffected > 0) {
@@ -160,12 +163,31 @@ public class Main {
             System.out.print("실적 ID를 입력하세요: ");
             int performanceId = scanner.nextInt();
             scanner.nextLine();  // 버퍼 비우기
-            System.out.print("새로운 실적 정보를 입력하세요: ");
-            String performanceInfo = scanner.nextLine();
+            System.out.print("수정할 항목을 선택하세요 ");
+            System.out.print("1: 실적 정보  2: 실적 날짜 ");
+            int choice = scanner.nextInt();
+            scanner.nextLine();  // 버퍼 비우기
+            String NewValue = null;
+            String sql = null;
 
-            String sql = "UPDATE Activity SET description = ? WHERE activity_id = ?";
+            switch (choice)
+            {
+                case 1:
+                    System.out.print("수정할 실적 정보를 입력하세요: ");
+                    NewValue = scanner.nextLine();
+                    sql = "UPDATE Performance SET performance_info = ? WHERE performance_id = ?";
+                    break;
+                case 2:
+                    System.out.print("수정할 실적 날짜를 입력하세요: ");
+                    NewValue = scanner.nextLine();
+                    sql = "UPDATE Performance SET performance_date = ? WHERE performance_id = ?";
+                    break;
+            }
+
+
+
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setString(1, performanceInfo);
+                stmt.setString(1, NewValue);
                 stmt.setInt(2, performanceId);
                 int rowsAffected = stmt.executeUpdate();
                 if (rowsAffected > 0) {
@@ -184,7 +206,7 @@ public class Main {
         try (PreparedStatement stmt = conn.prepareStatement("SELECT * FROM Club")) {
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                System.out.println("동아리 ID: " + rs.getInt("club_id") + ", 이름: " + rs.getString("name") + ", 정보: " + rs.getString("description"));
+                System.out.println("동아리 ID: " + rs.getInt("club_id") + ", 이름: " + rs.getString("Cname") + ", 정보: " + rs.getString("club_info"));
             }
         } catch (SQLException e) {
             System.out.println("동아리 목록 조회 중 오류 발생: " + e.getMessage());
@@ -197,7 +219,7 @@ public class Main {
         String clubName = scanner.nextLine();
 
         // 동아리 이름으로 club_id 찾기
-        String clubQuery = "SELECT club_id FROM Club WHERE name = ?";
+        String clubQuery = "SELECT club_id FROM Club WHERE Cname = ?";
         try (PreparedStatement clubStmt = conn.prepareStatement(clubQuery)) {
             clubStmt.setString(1, clubName);
             ResultSet clubRs = clubStmt.executeQuery();
@@ -210,7 +232,7 @@ public class Main {
                 int studentId = scanner.nextInt();
                 scanner.nextLine(); // 버퍼 비우기
                 System.out.print("부원의 이름을 입력하세요: ");
-                String name = scanner.nextLine();
+                String Mname = scanner.nextLine();
                 System.out.print("부원의 학년을 입력하세요 (숫자): ");
                 int grade = scanner.nextInt();
                 scanner.nextLine(); // 버퍼 비우기
@@ -228,11 +250,11 @@ public class Main {
                 }
 
                 // 데이터 삽입
-                String insertQuery = "INSERT INTO Member (student_id,name, grade, gender, status, club_id, role) " +
+                String insertQuery = "INSERT INTO Member (student_id,Mname, grade, gender, status, club_id, role) " +
                         "VALUES (?, ?, ?, ?, ?, ?,?)";
                 try (PreparedStatement insertStmt = conn.prepareStatement(insertQuery)) {
                     insertStmt.setInt(1, studentId);
-                    insertStmt.setString(2, name);
+                    insertStmt.setString(2, Mname);
                     insertStmt.setInt(3, grade);
                     insertStmt.setString(4, String.valueOf(gender));
                     insertStmt.setString(5, status);
@@ -262,7 +284,7 @@ public class Main {
 
         try {
             // 동아리 이름으로 club_id 조회
-            String clubQuery = "SELECT club_id FROM Club WHERE name = ?";
+            String clubQuery = "SELECT club_id FROM Club WHERE Cname = ?";
             try (PreparedStatement clubStmt = conn.prepareStatement(clubQuery)) {
                 clubStmt.setString(1, clubName);
                 ResultSet clubRs = clubStmt.executeQuery();
@@ -278,7 +300,7 @@ public class Main {
 
                         System.out.println("[" + clubName + "] 부원 목록");
                         while (memberRs.next()) {
-                            System.out.println("학번: " + memberRs.getInt("student_id") + ", 이름: " + memberRs.getString("name"));
+                            System.out.println("학번: " + memberRs.getInt("student_id") + ", 이름: " + memberRs.getString("Mname"));
                         }
                     }
                 } else {
@@ -305,7 +327,7 @@ public class Main {
 
             if (rs.next()) {
                 System.out.println("현재 부원 정보:");
-                System.out.println("이름: " + rs.getString("name"));
+                System.out.println("이름: " + rs.getString("Mname"));
                 System.out.println("학년: " + rs.getInt("grade"));
                 System.out.println("성별: " + rs.getString("gender"));
                 System.out.println("상태: " + rs.getString("status"));
@@ -329,7 +351,7 @@ public class Main {
                     case 1: // 이름 수정
                         System.out.print("새로운 이름을 입력하세요: ");
                         newValue = scanner.nextLine();
-                        updateQuery = "UPDATE Member SET name = ? WHERE student_id = ?";
+                        updateQuery = "UPDATE Member SET Mname = ? WHERE student_id = ?";
                         break;
                     case 2: // 학년 수정
                         System.out.print("새로운 학년을 입력하세요: ");
@@ -380,24 +402,45 @@ public class Main {
 
     // 9. 회비 납부
     private static void makePayment(Scanner scanner) {
-        System.out.print("학번를 입력하세요: ");
-        int memberId = scanner.nextInt();
+        System.out.print("동아리 이름을 입력하세요: ");
+        String clubName = scanner.nextLine(); // 동아리 이름 입력받기
+
+        System.out.print("학번을 입력하세요: ");
+        int studentId = scanner.nextInt();
         System.out.print("회비 금액을 입력하세요: ");
         double amount = scanner.nextDouble();
         // 현재 날짜를 가져오기 (yyyy-MM-dd 형식)
         java.sql.Date currentDate = new java.sql.Date(System.currentTimeMillis());
 
+        String clubIdQuery = "SELECT club_id FROM Club WHERE Cname = ?";
 
-        try (PreparedStatement stmt = conn.prepareStatement("INSERT INTO Payment (member_id, amount, payment_date) VALUES (?, ?, ?)")) {
-            stmt.setInt(1, memberId);
-            stmt.setDouble(2, amount);
-            stmt.setDate(3, currentDate);  // 현재 날짜를 payment_date로 설정
-            stmt.executeUpdate();
-            System.out.println("회비가 납부되었습니다.");
+        try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
+            clubStmt.setString(1, clubName);
+
+            try (ResultSet clubRs = clubStmt.executeQuery()) {
+                if (!clubRs.next()) {
+                    System.out.println("입력한 동아리가 존재하지 않습니다.");
+                    return;
+                }
+
+                int clubId = clubRs.getInt("club_id");
+
+                // 회비 납부 기록 삽입
+                try (PreparedStatement paymentStmt = conn.prepareStatement(
+                        "INSERT INTO Payment (student_id, amount, payment_date, club_id) VALUES (?, ?, ?, ?)")) {
+                    paymentStmt.setInt(1, studentId);
+                    paymentStmt.setDouble(2, amount);
+                    paymentStmt.setDate(3, currentDate); // 현재 날짜를 payment_date로 설정
+                    paymentStmt.setInt(4, clubId); // club_id 추가
+                    paymentStmt.executeUpdate();
+                    System.out.println("회비가 납부되었습니다.");
+                }
+            }
         } catch (SQLException e) {
             System.out.println("회비 납부 중 오류 발생: " + e.getMessage());
         }
     }
+
 
 
     // 10. 회비 납부 내역
@@ -405,7 +448,7 @@ public class Main {
         System.out.print("동아리 이름을 입력하세요: ");
         String clubName = scanner.nextLine();
 
-        String clubIdQuery = "SELECT club_id FROM Club WHERE club_name = ?";
+        String clubIdQuery = "SELECT club_id FROM Club WHERE Cname = ?";
         try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
             clubStmt.setString(1, clubName);
 
@@ -423,7 +466,7 @@ public class Main {
                     stmt.setInt(1, clubId);
                     ResultSet rs = stmt.executeQuery();
                     while (rs.next()) {
-                        System.out.println("부원 ID: " + rs.getInt("student_id") + ", 금액: " + rs.getDouble("amount") + "납부 날짜" + rs.getDate("payment_date"));
+                        System.out.println("학번: " + rs.getInt("student_id") + ", 금액: " + rs.getDouble("amount") + " 납부날짜" + rs.getDate("payment_date"));
                     }
                 }
             }
@@ -438,7 +481,7 @@ public class Main {
         System.out.print("동아리 이름을 입력하세요: ");
         String clubName = scanner.nextLine();
 
-        String clubIdQuery = "SELECT club_id FROM Club WHERE name = ?";
+        String clubIdQuery = "SELECT club_id FROM Club WHERE Cname = ?";
         try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
             clubStmt.setString(1, clubName);
 
@@ -472,7 +515,7 @@ public class Main {
         System.out.print("동아리 이름을 입력하세요: ");
         String clubName = scanner.nextLine();
 
-        String clubIdQuery = "SELECT club_id FROM Club WHERE name = ?";
+        String clubIdQuery = "SELECT club_id FROM Club WHERE Cname = ?";
         try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
             clubStmt.setString(1, clubName);
 
@@ -502,6 +545,129 @@ public class Main {
             System.out.println("공지사항 게시 중 오류 발생: " + e.getMessage());
         }
     }
+    private static void listEvents(Scanner scanner) {
+        System.out.print("동아리 이름을 입력하세요: ");
+        String clubName = scanner.nextLine();
+
+        // 동아리 ID 조회
+        String clubIdQuery = "SELECT club_id FROM Club WHERE Cname = ?";
+        try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
+            clubStmt.setString(1, clubName);
+
+            try (ResultSet clubRs = clubStmt.executeQuery()) {
+                if (!clubRs.next()) {
+                    System.out.println("입력한 동아리가 존재하지 않습니다.");
+                    return;
+                }
+
+                int clubId = clubRs.getInt("club_id");
+
+                // 행사 목록 조회
+                String eventQuery = "SELECT * FROM Event WHERE club_id = ?";
+                try (PreparedStatement eventStmt = conn.prepareStatement(eventQuery)) {
+                    eventStmt.setInt(1, clubId);
+                    try (ResultSet rs = eventStmt.executeQuery()) {
+                        while (rs.next()) {
+                            System.out.println("행사 ID: " + rs.getInt("event_id"));
+                            System.out.println("행사 이름: " + rs.getString("Ename"));
+                            System.out.println("행사 날짜: " + rs.getDate("event_date"));
+                            System.out.println("-----------");
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("행사 목록 조회 중 오류 발생: " + e.getMessage());
+        }
+    }
+    private static void participateInEvent(Scanner scanner) {
+        System.out.print("동아리 이름을 입력하세요: ");
+        String clubName = scanner.nextLine();
+
+        // 동아리 ID 조회
+        String clubIdQuery = "SELECT club_id FROM Club WHERE Cname = ?";
+        try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
+            clubStmt.setString(1, clubName);
+
+            try (ResultSet clubRs = clubStmt.executeQuery()) {
+                if (!clubRs.next()) {
+                    System.out.println("입력한 동아리가 존재하지 않습니다.");
+                    return;
+                }
+
+                int clubId = clubRs.getInt("club_id");
+
+                // 행사 목록 조회
+                System.out.println("참여할 행사 목록:");
+                String eventQuery = "SELECT * FROM Event WHERE club_id = ?";
+                try (PreparedStatement eventStmt = conn.prepareStatement(eventQuery)) {
+                    eventStmt.setInt(1, clubId);
+                    try (ResultSet rs = eventStmt.executeQuery()) {
+                        while (rs.next()) {
+                            System.out.println("행사 ID: " + rs.getInt("event_id") + ", 행사 이름: " + rs.getString("Ename"));
+                        }
+                    }
+                }
+
+                System.out.print("참여할 행사 ID를 입력하세요: ");
+                int eventId = scanner.nextInt();
+                scanner.nextLine();  // 버퍼 비우기
+
+                // 부원 학번 입력
+                System.out.print("부원 학번을 입력하세요: ");
+                int studentId = scanner.nextInt();
+
+                // 행사 참여 등록
+                String insertParticipationQuery = "INSERT INTO Participate_in (event_id, student_id) VALUES (?, ?)";
+                try (PreparedStatement stmt = conn.prepareStatement(insertParticipationQuery)) {
+                    stmt.setInt(1, eventId);
+                    stmt.setInt(2, studentId);
+                    stmt.executeUpdate();
+                    System.out.println("행사 참여가 등록되었습니다.");
+                }
+
+            }
+        } catch (SQLException e) {
+            System.out.println("행사 참여 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+    private static void createEvent(Scanner scanner) {
+        System.out.print("동아리 이름을 입력하세요: ");
+        String clubName = scanner.nextLine();
+
+        // 동아리 ID 조회
+        String clubIdQuery = "SELECT club_id FROM Club WHERE Cname = ?";
+        try (PreparedStatement clubStmt = conn.prepareStatement(clubIdQuery)) {
+            clubStmt.setString(1, clubName);
+
+            try (ResultSet clubRs = clubStmt.executeQuery()) {
+                if (!clubRs.next()) {
+                    System.out.println("입력한 동아리가 존재하지 않습니다.");
+                    return;
+                }
+
+                int clubId = clubRs.getInt("club_id");
+
+                // 행사 정보 입력
+                System.out.print("행사 이름을 입력하세요: ");
+                String eventName = scanner.nextLine();
+                System.out.print("행사 날짜를 입력하세요 (YYYY-MM-DD): ");
+                String eventDate = scanner.nextLine();
+
+                String insertEventQuery = "INSERT INTO Event (club_id, Ename, event_date) VALUES (?, ?, ?)";
+                try (PreparedStatement eventStmt = conn.prepareStatement(insertEventQuery)) {
+                    eventStmt.setInt(1, clubId);
+                    eventStmt.setString(2, eventName);
+                    eventStmt.setString(3, eventDate);
+                    eventStmt.executeUpdate();
+                    System.out.println("행사가 성공적으로 등록되었습니다.");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("행사 등록 중 오류 발생: " + e.getMessage());
+        }
+    }
 
 
 
@@ -521,8 +687,9 @@ public class Main {
         System.out.println("11. 회비 납부 내역 조회");
         System.out.println("12. 공지사항 목록");
         System.out.println("13. 공지사항 등록");
-
-
+        System.out.println("14. 행사 목록 보기");
+        System.out.println("15. 행사 참여하기");
+        System.out.println("16. 행사 개최");
         System.out.println("0. 종료");
     }
 
@@ -579,6 +746,16 @@ public class Main {
                         break;
                     case 13:
                         postNotice(scanner);
+                        break;
+
+                    case 14:
+                        listEvents(scanner); // 행사 목록 보기
+                        break;
+                    case 15:
+                        participateInEvent(scanner); // 행사 참여하기
+                        break;
+                    case 16:
+                        createEvent(scanner); // 행사 개최
                         break;
                     case 0:
                         System.out.println("프로그램을 종료합니다.");
